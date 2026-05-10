@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import '../services/data_service.dart';
+import 'tts_service.dart';
 import 'hasil_screen.dart';
 
 /// Stage 2 — Susun Kata (tap huruf, validasi string)
+/// ✅ FIX: Skor sekarang disimpan via DataService.simpanSkorStage()
+/// ✅ BARU: Integrasi TTS untuk audio kata dan feedback
 class Stage2Screen extends StatefulWidget {
   const Stage2Screen({super.key});
   @override
@@ -28,6 +31,9 @@ class _Stage2ScreenState extends State<Stage2Screen>
   bool? _statusBenar;
   bool _sudahCek = false;
 
+  // ✅ BARU: Cegah tombol TTS ditekan berkali-kali
+  bool _isSpeaking = false;
+
   late AnimationController _shakeCtrl;
   late Animation<double> _shakeAnim;
 
@@ -43,15 +49,40 @@ class _Stage2ScreenState extends State<Stage2Screen>
       TweenSequenceItem(tween: Tween(begin: -8.0, end: 8.0), weight: 2),
       TweenSequenceItem(tween: Tween(begin: 8.0, end: 0.0), weight: 1),
     ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
+
     _muatSoal();
+
+    // ✅ BARU: Ucapkan instruksi & soal pertama saat screen dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ucapkanSoal(_soalList[0]);
+    });
   }
 
   @override
   void dispose() {
     _shakeCtrl.dispose();
+    // ✅ BARU: Stop TTS saat screen ditutup
+    TtsService.instance.stop();
     super.dispose();
   }
 
+  // ============================================================
+  // ✅ BARU: Ucapkan soal (kata + ejaannya)
+  // ============================================================
+  Future<void> _ucapkanSoal(Map<String, dynamic> soal) async {
+    if (_isSpeaking) return;
+    setState(() => _isSpeaking = true);
+
+    // Ucapkan kata beserta ejaannya huruf per huruf
+    // Contoh: "Ayam. A. Y. A. M. Ayam."
+    await TtsService.instance.speakKata(soal['label'] as String);
+
+    if (mounted) setState(() => _isSpeaking = false);
+  }
+
+  // ============================================================
+  // Logika muat & susun soal
+  // ============================================================
   void _muatSoal() {
     final huruf = (_soalList[_soalIndex]['kata'] as String).split('');
     huruf.shuffle(Random());
@@ -100,11 +131,15 @@ class _Stage2ScreenState extends State<Stage2Screen>
     setState(() {
       _statusBenar = benar;
       _sudahCek = true;
-      if (benar)
+      if (benar) {
         _skor += 20;
-      else {
+        // ✅ BARU: Ucapkan feedback benar
+        TtsService.instance.speakBenar();
+      } else {
         _nyawa--;
         _shakeCtrl.forward(from: 0);
+        // ✅ BARU: Ucapkan feedback salah
+        TtsService.instance.speakSalah();
       }
     });
   }
@@ -133,15 +168,27 @@ class _Stage2ScreenState extends State<Stage2Screen>
       }
       setState(() => _soalIndex++);
       _muatSoal();
+      // ✅ BARU: Ucapkan soal berikutnya
+      _ucapkanSoal(_soalList[_soalIndex]);
     } else {
       _muatSoal();
     }
   }
 
-  void _keHasil() => Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-          builder: (_) => HasilScreen(skor: _skor, stageNomor: 2)));
+  // ============================================================
+  // ✅ FIX: Simpan skor ke DataService sebelum ke HasilScreen
+  // ============================================================
+  Future<void> _keHasil() async {
+    // Simpan skor ke SharedPreferences via DataService
+    // Ini yang sebelumnya TIDAK dilakukan!
+    await DataService.instance.simpanSkorStage(2, _skor);
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (_) => HasilScreen(skor: _skor, stageNomor: 2)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -214,7 +261,7 @@ class _Stage2ScreenState extends State<Stage2Screen>
           padding: const EdgeInsets.all(18),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            // Kartu gambar
+            // Kartu gambar + tombol TTS
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -235,34 +282,55 @@ class _Stage2ScreenState extends State<Stage2Screen>
                               fontSize: 13,
                               color: Colors.grey[600],
                               fontWeight: FontWeight.w600)),
+                      // ✅ UPDATE: Tombol TTS dengan animasi loading
                       GestureDetector(
-                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text('🔊 "${soal['label']}"'),
-                                duration: const Duration(seconds: 1),
-                                backgroundColor: const Color(0xFFFFD93D))),
-                        child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                                color:
-                                    const Color(0xFFFFD93D).withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: const Color(0xFFFFD93D),
-                                    width: 1.5)),
-                            child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.play_arrow_rounded,
-                                      color: Color(0xFFD4A017), size: 18),
-                                  SizedBox(width: 4),
-                                  Text('Play',
-                                      style: TextStyle(
-                                          color: Color(0xFFD4A017),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold)),
-                                ])),
+                        onTap: _isSpeaking ? null : () => _ucapkanSoal(soal),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                              color: _isSpeaking
+                                  ? const Color(0xFFFFD93D).withOpacity(0.3)
+                                  : const Color(0xFFFFD93D).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: const Color(0xFFFFD93D), width: 1.5)),
+                          child: _isSpeaking
+                              ? const SizedBox(
+                                  width: 60,
+                                  height: 18,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFFD4A017)),
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text('...',
+                                          style: TextStyle(
+                                              color: Color(0xFFD4A017),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold)),
+                                    ],
+                                  ))
+                              : const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                      Icon(Icons.play_arrow_rounded,
+                                          color: Color(0xFFD4A017), size: 18),
+                                      SizedBox(width: 4),
+                                      Text('Play',
+                                          style: TextStyle(
+                                              color: Color(0xFFD4A017),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold)),
+                                    ]),
+                        ),
                       ),
                     ]),
                 const SizedBox(height: 16),

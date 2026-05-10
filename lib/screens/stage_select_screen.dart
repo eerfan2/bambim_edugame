@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/data_service.dart';
-import 'stage1_screen.dart';
-import 'stage2_screen.dart';
+import 'stage_engine.dart'; // ✅ Semua stage pakai StageEngine
 import 'settings_notification_screen.dart';
 
 /// ============================================================
-/// SCREEN: StageSelectScreen — data live dari DataService
+/// SCREEN: StageSelectScreen
+/// ✅ UPDATE: Semua stage (1-5) sekarang pakai StageEngine
 /// ============================================================
 class StageSelectScreen extends StatelessWidget {
   const StageSelectScreen({super.key});
@@ -16,31 +16,36 @@ class StageSelectScreen extends StatelessWidget {
       'nomor': 1,
       'label': 'Stage 1',
       'subjudul': 'Tebak Huruf',
-      'warna': Color(0xFF4ECDC4)
+      'warna': Color(0xFF4ECDC4),
+      'emoji': '🔤',
     },
     {
       'nomor': 2,
       'label': 'Stage 2',
-      'subjudul': 'Susun Kata',
-      'warna': Color(0xFFFFD93D)
+      'subjudul': 'Huruf + Kata',
+      'warna': Color(0xFFFFD93D),
+      'emoji': '✏️',
     },
     {
       'nomor': 3,
       'label': 'Stage 3',
-      'subjudul': 'Ejaan Panjang',
-      'warna': Color(0xFFFF6B6B)
+      'subjudul': 'Susun Kata',
+      'warna': Color(0xFFFF6B6B),
+      'emoji': '🧩',
     },
     {
       'nomor': 4,
       'label': 'Stage 4',
-      'subjudul': 'Tantangan',
-      'warna': Color(0xFFA29BFE)
+      'subjudul': 'Kata Panjang',
+      'warna': Color(0xFFA29BFE),
+      'emoji': '📚',
     },
     {
       'nomor': 5,
       'label': 'Stage 5',
-      'subjudul': 'Master Ejaan',
-      'warna': Color(0xFFFF8C00)
+      'subjudul': 'Kalimat Pendek',
+      'warna': Color(0xFFFF8C00),
+      'emoji': '📝',
     },
   ];
 
@@ -69,18 +74,22 @@ class StageSelectScreen extends StatelessWidget {
           centerTitle: true,
         ),
         body: SafeArea(
-            child: Column(children: [
-          _infoSiswa(ds),
-          Expanded(child: _peta(ctx, ds)),
-        ])),
+          child: Column(children: [
+            _infoSiswa(ds),
+            Expanded(child: _peta(ctx, ds)),
+          ]),
+        ),
         bottomNavigationBar: _bottomNav(context),
       );
     });
   }
 
+  // ── Info siswa + bintang total ──
   Widget _infoSiswa(DataService ds) {
     final bintang = List.generate(DataService.totalStage, (i) => i + 1)
         .fold<int>(0, (s, x) => s + ds.getStageBintang(x));
+    final maxBintang = DataService.totalStage * 3;
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -103,25 +112,22 @@ class StageSelectScreen extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF2D3436))),
         ]),
+        // Total bintang dari semua stage
         Row(children: [
-          const Text('POINT : ',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF636E72))),
-          ...List.generate(
-              3,
-              (i) => Text(i < bintang ? '★' : '☆',
-                  style: TextStyle(
-                      fontSize: 18,
-                      color: i < bintang
-                          ? const Color(0xFFFFD93D)
-                          : Colors.grey[300]))),
+          const Text('⭐ ', style: TextStyle(fontSize: 16)),
+          Text(
+            '$bintang / $maxBintang',
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF6C63FF)),
+          ),
         ]),
       ]),
     );
   }
 
+  // ── Peta stage ──
   Widget _peta(BuildContext ctx, DataService ds) {
     return Stack(children: [
       Positioned.fill(child: CustomPaint(painter: _PathPainter())),
@@ -139,6 +145,8 @@ class StageSelectScreen extends StatelessWidget {
           child: _Bubble(
             nomor: nomor,
             label: meta['label'] as String,
+            subjudul: meta['subjudul'] as String,
+            emoji: meta['emoji'] as String,
             terbuka: terbuka,
             selesai: selesai,
             bintang: bintang,
@@ -149,8 +157,12 @@ class StageSelectScreen extends StatelessWidget {
                   content: Row(children: [
                     const Text('🔒', style: TextStyle(fontSize: 20)),
                     const SizedBox(width: 10),
-                    Text('Selesaikan Stage ${nomor - 1} dulu atau tunggu guru!',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Text(
+                        'Stage $nomor belum dibuka! Minta gurumu untuk membukanya.',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ]),
                   backgroundColor: const Color(0xFF6C63FF),
                   behavior: SnackBarBehavior.floating,
@@ -160,18 +172,13 @@ class StageSelectScreen extends StatelessWidget {
                 ));
                 return;
               }
-              Widget screen;
-              switch (nomor) {
-                case 1:
-                  screen = const Stage1Screen();
-                  break;
-                case 2:
-                  screen = const Stage2Screen();
-                  break;
-                default:
-                  screen = _PlaceholderStage(nomor: nomor);
-              }
-              Navigator.push(ctx, MaterialPageRoute(builder: (_) => screen));
+              // ✅ Semua stage pakai StageEngine
+              Navigator.push(
+                ctx,
+                MaterialPageRoute(
+                  builder: (_) => StageEngine(stageNomor: nomor),
+                ),
+              );
             },
           ),
         );
@@ -179,6 +186,7 @@ class StageSelectScreen extends StatelessWidget {
     ]);
   }
 
+  // ── Bottom Nav ──
   Widget _bottomNav(BuildContext ctx) {
     return Container(
       height: 64,
@@ -196,18 +204,19 @@ class StageSelectScreen extends StatelessWidget {
             icon: Icons.home_rounded,
             label: 'Dashboard',
             onTap: () => Navigator.popUntil(ctx, (r) => r.isFirst)),
+        // Logo tengah
         Container(
             width: 48,
             height: 48,
             decoration: const BoxDecoration(
                 color: Color(0xFF6C63FF), shape: BoxShape.circle),
             child: const Center(
-                child: Text('EJ',
+                child: Text('BM',
                     style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
-                        fontSize: 14,
-                        letterSpacing: 1)))),
+                        fontSize: 13,
+                        letterSpacing: 0.5)))),
         _NBtn(
             icon: Icons.settings_rounded,
             label: 'Pengaturan',
@@ -218,6 +227,7 @@ class StageSelectScreen extends StatelessWidget {
   }
 }
 
+// ── Nav Button ──
 class _NBtn extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -233,20 +243,26 @@ class _NBtn extends StatelessWidget {
       );
 }
 
+// ── Bubble Stage ──
 class _Bubble extends StatefulWidget {
   final int nomor, bintang;
-  final String label;
+  final String label, subjudul, emoji;
   final bool terbuka, selesai;
   final Color warna;
   final VoidCallback onTap;
-  const _Bubble(
-      {required this.nomor,
-      required this.label,
-      required this.terbuka,
-      required this.selesai,
-      required this.bintang,
-      required this.warna,
-      required this.onTap});
+
+  const _Bubble({
+    required this.nomor,
+    required this.label,
+    required this.subjudul,
+    required this.emoji,
+    required this.terbuka,
+    required this.selesai,
+    required this.bintang,
+    required this.warna,
+    required this.onTap,
+  });
+
   @override
   State<_Bubble> createState() => _BubbleState();
 }
@@ -254,6 +270,7 @@ class _Bubble extends StatefulWidget {
 class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
   late AnimationController _c;
   late Animation<double> _s;
+
   @override
   void initState() {
     super.initState();
@@ -280,56 +297,80 @@ class _BubbleState extends State<_Bubble> with SingleTickerProviderStateMixin {
       },
       onTapCancel: () => _c.reverse(),
       child: ScaleTransition(
-          scale: _s,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                    color: c,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: widget.terbuka
-                        ? [
-                            BoxShadow(
-                                color: c.withOpacity(0.45),
-                                blurRadius: 14,
-                                offset: const Offset(0, 5))
-                          ]
-                        : []),
-                child: Center(
-                    child: widget.terbuka
-                        ? Text('${widget.nomor}',
-                            style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white))
-                        : const Icon(Icons.lock_rounded,
-                            color: Colors.white, size: 30))),
-            const SizedBox(height: 6),
-            Text(widget.label,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: widget.terbuka
-                        ? const Color(0xFF2D3436)
-                        : Colors.grey[500])),
-            if (widget.selesai)
-              Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(
-                      3,
-                      (i) => Text(i < widget.bintang ? '★' : '☆',
-                          style: TextStyle(
-                              fontSize: 14,
-                              color: i < widget.bintang
-                                  ? const Color(0xFFFFD93D)
-                                  : Colors.grey[300])))),
-          ])),
+        scale: _s,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Lingkaran utama stage
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+                color: c,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: widget.terbuka
+                    ? [
+                        BoxShadow(
+                            color: c.withOpacity(0.45),
+                            blurRadius: 14,
+                            offset: const Offset(0, 5))
+                      ]
+                    : []),
+            child: Center(
+              child: widget.terbuka
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(widget.emoji,
+                            style: const TextStyle(fontSize: 22)),
+                        Text(
+                          '${widget.nomor}',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              height: 1.1),
+                        ),
+                      ],
+                    )
+                  : const Icon(Icons.lock_rounded,
+                      color: Colors.white, size: 28),
+            ),
+          ),
+          const SizedBox(height: 5),
+          // Label
+          Text(widget.label,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: widget.terbuka
+                      ? const Color(0xFF2D3436)
+                      : Colors.grey[500])),
+          // Subjudul
+          Text(widget.subjudul,
+              style: TextStyle(fontSize: 9, color: Colors.grey[500])),
+          // Bintang hasil
+          if (widget.selesai)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(
+                3,
+                (i) => Text(
+                  i < widget.bintang ? '★' : '☆',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: i < widget.bintang
+                          ? const Color(0xFFFFD93D)
+                          : Colors.grey[300]),
+                ),
+              ),
+            ),
+        ]),
+      ),
     );
   }
 }
 
+// ── Custom Painter path antar stage ──
 class _PathPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -338,16 +379,18 @@ class _PathPainter extends CustomPainter {
       ..strokeWidth = 5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
+
     final pts = [
-      Alignment(-0.7, 0.85),
-      Alignment(0.0, 0.45),
-      Alignment(-0.5, 0.05),
-      Alignment(0.4, -0.35),
-      Alignment(-0.2, -0.72),
+      const Alignment(-0.7, 0.85),
+      const Alignment(0.0, 0.45),
+      const Alignment(-0.5, 0.05),
+      const Alignment(0.4, -0.35),
+      const Alignment(-0.2, -0.72),
     ]
         .map((a) =>
             Offset((a.x + 1) / 2 * size.width, (a.y + 1) / 2 * size.height))
         .toList();
+
     final path = Path()..moveTo(pts[0].dx, pts[0].dy);
     for (int i = 0; i < pts.length - 1; i++) {
       final mid = Offset(
@@ -360,30 +403,4 @@ class _PathPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_) => false;
-}
-
-class _PlaceholderStage extends StatelessWidget {
-  final int nomor;
-  const _PlaceholderStage({required this.nomor});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-            backgroundColor: const Color(0xFF6C63FF),
-            iconTheme: const IconThemeData(color: Colors.white),
-            title: Text('Stage $nomor',
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold))),
-        body: Center(
-            child:
-                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Text('🚧', style: TextStyle(fontSize: 72)),
-          Text('Stage $nomor',
-              style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF6C63FF))),
-          Text('Segera hadir!',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500])),
-        ])),
-      );
 }

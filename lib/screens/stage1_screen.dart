@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/data_service.dart';
+import 'tts_service.dart'; // ✅ BARU
 import 'hasil_screen.dart';
 
-/// Stage 1 — Tebak Huruf (menggunakan DataService untuk simpan skor)
+/// Stage 1 — Tebak Huruf
+/// ✅ FIX: Skor sekarang disimpan via DataService.simpanSkorStage()
+/// ✅ BARU: Integrasi TTS untuk audio huruf dan feedback
 class Stage1Screen extends StatefulWidget {
   const Stage1Screen({super.key});
   @override
@@ -56,6 +59,9 @@ class _Stage1ScreenState extends State<Stage1Screen>
   bool? _statusJawaban;
   bool _sudahJawab = false;
 
+  // ✅ BARU: Cegah tombol TTS ditekan berkali-kali
+  bool _isSpeaking = false;
+
   late AnimationController _shakeCtrl;
   late Animation<double> _shakeAnim;
 
@@ -71,14 +77,41 @@ class _Stage1ScreenState extends State<Stage1Screen>
       TweenSequenceItem(tween: Tween(begin: -8.0, end: 8.0), weight: 2),
       TweenSequenceItem(tween: Tween(begin: 8.0, end: 0.0), weight: 1),
     ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
+
+    // ✅ BARU: Ucapkan instruksi soal pertama saat screen dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ucapkanSoal(_soalList[0]);
+    });
   }
 
   @override
   void dispose() {
     _shakeCtrl.dispose();
+    // ✅ BARU: Stop TTS saat screen ditutup
+    TtsService.instance.stop();
     super.dispose();
   }
 
+  // ============================================================
+  // ✅ BARU: Ucapkan soal (huruf + kata contoh)
+  // ============================================================
+  Future<void> _ucapkanSoal(Map<String, dynamic> soal) async {
+    if (_isSpeaking) return;
+    setState(() => _isSpeaking = true);
+
+    // Ucapkan huruf beserta kata contoh
+    // Contoh: "Huruf A. A, seperti Ayam"
+    await TtsService.instance.speakHuruf(
+      soal['huruf'] as String,
+      contohKata: soal['contoh'] as String,
+    );
+
+    if (mounted) setState(() => _isSpeaking = false);
+  }
+
+  // ============================================================
+  // Logika menjawab soal
+  // ============================================================
   void _pilih(int i) {
     if (_sudahJawab) return;
     final benar = i == (_soalList[_soalIndex]['benar'] as int);
@@ -86,11 +119,15 @@ class _Stage1ScreenState extends State<Stage1Screen>
       _pilihanUser = i;
       _statusJawaban = benar;
       _sudahJawab = true;
-      if (benar)
+      if (benar) {
         _skor += 20;
-      else {
+        // ✅ BARU: Ucapkan feedback benar
+        TtsService.instance.speakBenar();
+      } else {
         _nyawa--;
         _shakeCtrl.forward(from: 0);
+        // ✅ BARU: Ucapkan feedback salah
+        TtsService.instance.speakSalah();
       }
     });
   }
@@ -112,15 +149,27 @@ class _Stage1ScreenState extends State<Stage1Screen>
       _keHasil();
       return;
     }
+
     setState(() {
       _soalIndex++;
       _pilihanUser = null;
       _statusJawaban = null;
       _sudahJawab = false;
     });
+
+    // ✅ BARU: Ucapkan soal berikutnya
+    _ucapkanSoal(_soalList[_soalIndex]);
   }
 
-  void _keHasil() {
+  // ============================================================
+  // ✅ FIX: Simpan skor ke DataService sebelum ke HasilScreen
+  // ============================================================
+  Future<void> _keHasil() async {
+    // Simpan skor ke SharedPreferences via DataService
+    // Ini yang sebelumnya TIDAK dilakukan, sehingga skor tidak tersimpan!
+    await DataService.instance.simpanSkorStage(1, _skor);
+
+    if (!mounted) return;
     Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -215,23 +264,32 @@ class _Stage1ScreenState extends State<Stage1Screen>
                         color: Color(0xFF636E72))),
                 const SizedBox(height: 16),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  // ✅ BARU: Tombol TTS dengan animasi loading
                   GestureDetector(
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(
-                                '🔊 "${soal['huruf']}" untuk "${soal['contoh']}"'),
-                            duration: const Duration(seconds: 1),
-                            backgroundColor: const Color(0xFF4ECDC4))),
-                    child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                            color: const Color(0xFF4ECDC4).withOpacity(0.15),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: const Color(0xFF4ECDC4), width: 2)),
-                        child: const Icon(Icons.volume_up_rounded,
-                            color: Color(0xFF4ECDC4), size: 26)),
+                    onTap: _isSpeaking ? null : () => _ucapkanSoal(soal),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                          color: _isSpeaking
+                              ? const Color(0xFF4ECDC4).withOpacity(0.3)
+                              : const Color(0xFF4ECDC4).withOpacity(0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: const Color(0xFF4ECDC4), width: 2)),
+                      child: Center(
+                        child: _isSpeaking
+                            // Animasi loading saat TTS berbicara
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.5, color: Color(0xFF4ECDC4)))
+                            : const Icon(Icons.volume_up_rounded,
+                                color: Color(0xFF4ECDC4), size: 26),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 20),
                   AnimatedBuilder(
@@ -263,8 +321,13 @@ class _Stage1ScreenState extends State<Stage1Screen>
                   ),
                 ]),
                 const SizedBox(height: 8),
-                Text('Ketik untuk mendengarkan',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                // ✅ UPDATE: Label tombol lebih informatif
+                Text(
+                  _isSpeaking
+                      ? 'Sedang berbicara...'
+                      : 'Ketuk 🔊 untuk mendengarkan',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                ),
               ]),
             ),
             const SizedBox(height: 16),

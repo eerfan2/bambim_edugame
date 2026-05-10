@@ -14,6 +14,8 @@ dependencies:
   shared_preferences: ^2.2.2
   # State management ringan (ChangeNotifier)
   provider: ^6.1.2
+  # ✅ BARU: Text-to-Speech untuk audio pembelajaran
+  flutter_tts: ^4.0.2
 
 dev_dependencies:
   flutter_test:

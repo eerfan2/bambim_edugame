@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/data_service.dart';
 import 'welcome_screen.dart';
+import 'teacher_dashboard_screen.dart';
 
 // ============================================================
-// SCREEN: NotificationScreen (PR #3)
-// ============================================================
-// Menampilkan daftar notifikasi (stage baru dibuka guru).
-// Otomatis menandai semua notif sebagai dibaca saat dibuka.
+// SCREEN: NotificationScreen
 // ============================================================
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -18,7 +16,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void initState() {
     super.initState();
-    // Tandai semua notifikasi dibaca saat halaman ini dibuka
     WidgetsBinding.instance.addPostFrameCallback((_) {
       DataService.instance.tandaiNotifikasiDibaca();
     });
@@ -43,19 +40,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
               child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('🔔', style: TextStyle(fontSize: 64)),
-                    const SizedBox(height: 16),
-                    const Text('Belum ada notifikasi',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFFF8C00))),
-                    const SizedBox(height: 8),
-                    Text('Nantikan stage baru dari gurumu!',
-                        style:
-                            TextStyle(fontSize: 14, color: Colors.grey[500])),
-                  ]),
-            )
+                  const Text('🔔', style: TextStyle(fontSize: 64)),
+                  const SizedBox(height: 16),
+                  const Text('Belum ada notifikasi',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF8C00))),
+                  const SizedBox(height: 8),
+                  Text('Nantikan stage baru dari gurumu!',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+                ]))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: notifList.length,
@@ -83,55 +78,55 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     ],
                   ),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Ikon notif
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF8C00).withOpacity(0.12),
-                          shape: BoxShape.circle,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF8C00).withOpacity(0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                              child:
+                                  Text('🔓', style: TextStyle(fontSize: 20))),
                         ),
-                        child: const Center(
-                            child: Text('🔓', style: TextStyle(fontSize: 20))),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(children: [
-                                Expanded(
-                                    child: Text(n['judul'] ?? '',
-                                        style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF2D3436)))),
-                                if (!dibaca)
-                                  Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                          color: Color(0xFFFF8C00),
-                                          shape: BoxShape.circle)),
-                              ]),
-                              const SizedBox(height: 4),
-                              Text(n['isi'] ?? '',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                      height: 1.4)),
-                              if (waktu != null) ...[
-                                const SizedBox(height: 6),
-                                Text(_formatWaktu(waktu),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(children: [
+                                  Expanded(
+                                      child: Text(n['judul'] ?? '',
+                                          style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFF2D3436)))),
+                                  if (!dibaca)
+                                    Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                            color: Color(0xFFFF8C00),
+                                            shape: BoxShape.circle)),
+                                ]),
+                                const SizedBox(height: 4),
+                                Text(n['isi'] ?? '',
                                     style: TextStyle(
-                                        fontSize: 10, color: Colors.grey[400])),
-                              ],
-                            ]),
-                      ),
-                    ],
-                  ),
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        height: 1.4)),
+                                if (waktu != null) ...[
+                                  const SizedBox(height: 6),
+                                  Text(_formatWaktu(waktu),
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[400])),
+                                ],
+                              ]),
+                        ),
+                      ]),
                 );
               },
             ),
@@ -148,7 +143,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
 }
 
 // ============================================================
-// SCREEN: SettingsScreen (PR #4)
+// SCREEN: SettingsScreen
+// ✅ UPDATE: Login Guru dipindahkan ke sini
 // ============================================================
 class SettingsScreen extends StatefulWidget {
   final bool isGuru;
@@ -181,11 +177,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ---- Profil ----
+            // ── Profil ──
             _buildProfilCard(ds),
             const SizedBox(height: 24),
 
-            // ---- Suara ----
+            // ── Suara ──
             _buildSectionLabel('🔊  Suara & Musik'),
             const SizedBox(height: 10),
             _buildSwitchCard(
@@ -208,16 +204,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 (v) => setState(() => _notifOn = v)),
             const SizedBox(height: 24),
 
-            // ---- Tentang App ----
+            // ── Tentang ──
             _buildSectionLabel('ℹ️  Tentang Aplikasi'),
             const SizedBox(height: 10),
-            _buildInfoCard('Nama Aplikasi', 'Eja Yuk! 🌟'),
+            _buildInfoCard('Nama Aplikasi', 'Bambim Edugame 🎓'),
             _buildInfoCard('Versi', '1.0.0'),
             _buildInfoCard('Dibuat oleh', 'Skripsi Flutter 2024'),
             const SizedBox(height: 24),
 
-            if (!widget.isGuru) ...[
-              // ---- Reset data siswa ----
+            // ── Data siswa ──
+            if (!widget.isGuru && ds.isLoggedInSiswa) ...[
               _buildSectionLabel('⚙️  Data'),
               const SizedBox(height: 10),
               _buildActionCard(
@@ -230,14 +226,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
             ],
 
-            // ---- Keluar ----
-            _buildActionCard(
-              icon: Icons.logout_rounded,
-              label: 'Keluar',
-              deskripsi: 'Kembali ke halaman pilih pengguna',
-              warna: const Color(0xFF636E72),
-              onTap: () => _logout(context, ds),
-            ),
+            // ✅ LOGIN GURU — tampil jika bukan dari dashboard guru
+            if (!widget.isGuru) ...[
+              _buildSectionLabel('👩‍🏫  Akses Guru'),
+              const SizedBox(height: 10),
+              _buildActionCard(
+                icon: Icons.school_rounded,
+                label:
+                    ds.isLoggedInGuru ? 'Dashboard Guru' : 'Login sebagai Guru',
+                deskripsi: ds.isLoggedInGuru
+                    ? 'Kelola stage dan pantau siswa'
+                    : 'Masuk dengan akun guru',
+                warna: const Color(0xFFA29BFE),
+                onTap: () {
+                  if (ds.isLoggedInGuru) {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const TeacherDashboardScreen()));
+                  } else {
+                    _showLoginGuru(context);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // ── Keluar ──
+            if (ds.isLoggedIn)
+              _buildActionCard(
+                icon: Icons.logout_rounded,
+                label: 'Keluar',
+                deskripsi: 'Kembali ke halaman awal',
+                warna: const Color(0xFF636E72),
+                onTap: () => _logout(context, ds),
+              ),
             const SizedBox(height: 24),
           ],
         ),
@@ -245,65 +268,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ── Kartu profil di pengaturan ──
   Widget _buildProfilCard(DataService ds) {
+    final sudahLogin = ds.isLoggedInSiswa || ds.isLoggedInGuru;
+    final namaDisplay = ds.isLoggedInGuru
+        ? 'Guru'
+        : ds.isLoggedInSiswa
+            ? ds.currentStudent
+            : 'Belum Login';
+    final emojiRole = ds.isLoggedInGuru ? '👩‍🏫' : '👦';
+    final labelRole = ds.isLoggedInGuru
+        ? '👩‍🏫 Guru'
+        : ds.isLoggedInSiswa
+            ? '🎓 Siswa'
+            : '👤 Tamu';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFA29BFE), Color(0xFF6C63FF)],
+        gradient: LinearGradient(
+          colors: sudahLogin
+              ? [const Color(0xFFA29BFE), const Color(0xFF6C63FF)]
+              : [const Color(0xFF95A5A6), const Color(0xFFBDC3C7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-              color: const Color(0xFFA29BFE).withOpacity(0.4),
+              color: (sudahLogin
+                      ? const Color(0xFFA29BFE)
+                      : const Color(0xFF95A5A6))
+                  .withOpacity(0.4),
               blurRadius: 16,
               offset: const Offset(0, 6))
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.25),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2.5)),
-            child: Center(
-                child: Text(widget.isGuru ? '👩‍🏫' : '👦',
-                    style: const TextStyle(fontSize: 28))),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.isGuru ? 'Guru' : ds.currentStudent,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900)),
-              const SizedBox(height: 4),
-              Text(widget.isGuru ? 'guru@ejayuk.com' : 'Siswa aktif',
-                  style: TextStyle(
-                      color: Colors.white.withOpacity(0.8), fontSize: 12)),
-            ]),
-          ),
-          // Badge role
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(12)),
-            child: Text(widget.isGuru ? '👩‍🏫 Guru' : '🎓 Siswa',
+      child: Row(children: [
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2.5)),
+          child: Center(
+              child: Text(sudahLogin ? emojiRole : '👤',
+                  style: const TextStyle(fontSize: 28))),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(namaDisplay,
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text(
+                sudahLogin
+                    ? (ds.isLoggedInGuru ? 'guru@bambim.com' : 'Siswa aktif')
+                    : 'Tap profil dashboard untuk login',
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.8), fontSize: 12)),
+          ]),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(12)),
+          child: Text(labelRole,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold)),
+        ),
+      ]),
     );
   }
 
@@ -329,26 +371,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 blurRadius: 8,
                 offset: const Offset(0, 3))
           ]),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFFA29BFE), size: 24),
-          const SizedBox(width: 14),
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(judul,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 14)),
-              Text(sub,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-            ]),
-          ),
-          Switch(
-              value: value,
-              activeColor: const Color(0xFFA29BFE),
-              onChanged: onChanged),
-        ],
-      ),
+      child: Row(children: [
+        Icon(icon, color: const Color(0xFFA29BFE), size: 24),
+        const SizedBox(width: 14),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(judul,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            Text(sub, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+          ]),
+        ),
+        Switch(
+            value: value,
+            activeColor: const Color(0xFFA29BFE),
+            onChanged: onChanged),
+      ]),
     );
   }
 
@@ -379,12 +418,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildActionCard(
-      {required IconData icon,
-      required String label,
-      required String deskripsi,
-      required Color warna,
-      required VoidCallback onTap}) {
+  Widget _buildActionCard({
+    required IconData icon,
+    required String label,
+    required String deskripsi,
+    required Color warna,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -394,28 +434,134 @@ class _SettingsScreenState extends State<SettingsScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: warna.withOpacity(0.3), width: 1.5),
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: warna, size: 26),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            color: warna)),
-                    Text(deskripsi,
-                        style:
-                            TextStyle(fontSize: 11, color: Colors.grey[500])),
-                  ]),
+        child: Row(children: [
+          Icon(icon, color: warna, size: 26),
+          const SizedBox(width: 14),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 14, color: warna)),
+              Text(deskripsi,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+            ]),
+          ),
+          Icon(Icons.arrow_forward_ios_rounded,
+              size: 14, color: warna.withOpacity(0.5)),
+        ]),
+      ),
+    );
+  }
+
+  // ── Login Guru ──
+  void _showLoginGuru(BuildContext ctx) {
+    final emailCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    String? errorMsg;
+    bool showPass = false;
+
+    showDialog(
+      context: ctx,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setStateDialog) {
+          Future<void> doLogin() async {
+            final ds = DataService.instance;
+            if (!ds.validateTeacher(emailCtrl.text.trim(), passCtrl.text)) {
+              setStateDialog(() => errorMsg = 'Email atau password salah!');
+              return;
+            }
+            await ds.loginGuru();
+            if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+            if (ctx.mounted) {
+              // ✅ Langsung ke dashboard guru setelah login
+              Navigator.push(
+                  ctx,
+                  MaterialPageRoute(
+                      builder: (_) => const TeacherDashboardScreen()));
+            }
+          }
+
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            title: const Row(children: [
+              Text('👩‍🏫', style: TextStyle(fontSize: 26)),
+              SizedBox(width: 10),
+              Expanded(
+                  child: Text('Login Guru',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w900))),
+            ]),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    hintText: 'guru@bambim.com',
+                    prefixIcon: const Icon(Icons.email_outlined,
+                        color: Color(0xFFA29BFE)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          const BorderSide(color: Color(0xFFA29BFE), width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                StatefulBuilder(
+                  builder: (_, setSt) => TextField(
+                    controller: passCtrl,
+                    obscureText: !showPass,
+                    onSubmitted: (_) => doLogin(),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline_rounded,
+                          color: Color(0xFFA29BFE)),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                            showPass ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.grey),
+                        onPressed: () => setSt(() => showPass = !showPass),
+                      ),
+                      errorText: errorMsg,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(
+                            color: Color(0xFFA29BFE), width: 2),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
-            Icon(Icons.arrow_forward_ios_rounded,
-                size: 14, color: warna.withOpacity(0.5)),
-          ],
-        ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child:
+                      Text('Batal', style: TextStyle(color: Colors.grey[500]))),
+              ElevatedButton(
+                onPressed: doLogin,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFA29BFE),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12))),
+                child: const Text('Masuk',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -457,24 +603,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Keluar?'),
-        content: const Text('Kamu akan kembali ke halaman awal.'),
+        content: const Text('Sesi login kamu akan diakhiri.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(_), child: const Text('Batal')),
+            onPressed: () => Navigator.pop(_),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
             onPressed: () async {
               await ds.logout();
+              if (_.mounted) Navigator.pop(_);
               if (ctx.mounted) {
-                Navigator.pushAndRemoveUntil(
-                    ctx,
-                    MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-                    (_) => false);
+                Navigator.pushNamedAndRemoveUntil(
+                  ctx,
+                  '/',
+                  (_) => false,
+                );
               }
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF636E72),
-                foregroundColor: Colors.white),
-            child: const Text('Keluar'),
+              backgroundColor: const Color(0xFF636E72),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ya, Keluar'),
           ),
         ],
       ),

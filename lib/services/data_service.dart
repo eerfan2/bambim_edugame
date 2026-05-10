@@ -3,25 +3,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 /// ============================================================
-/// SERVICE: DataService (Database Lokal)
-/// ============================================================
-/// Singleton yang mengelola SEMUA data persisten aplikasi
-/// menggunakan SharedPreferences (penyimpanan lokal di HP).
-///
-/// Cara pakai: DataService.instance.namaMethod()
-///
-/// Data yang disimpan:
-///   - Sesi login (nama siswa / role)
-///   - Status unlock setiap stage
-///   - Skor setiap stage per siswa
-///   - Notifikasi
-///
-/// Cara migrasi ke Firebase nanti:
-///   Cukup ganti implementasi setiap method, interface tetap sama.
+/// SERVICE: DataService
+/// ✅ UPDATE: Login sekarang opsional (mode tamu didukung)
+/// - Tanpa login → bisa akses belajar, tidak bisa akses Game
+/// - Login siswa via profil / saat buka Game
+/// - Login guru via halaman Pengaturan
 /// ============================================================
 class DataService extends ChangeNotifier {
-  // ---- SINGLETON PATTERN ----
-  // Satu instance untuk seluruh app
   static final DataService _instance = DataService._internal();
   static DataService get instance => _instance;
   DataService._internal();
@@ -29,30 +17,24 @@ class DataService extends ChangeNotifier {
   SharedPreferences? _prefs;
   bool _initialized = false;
 
-  // ============================================================
-  // INISIALISASI — panggil di main() sebelum runApp()
-  // ============================================================
   Future<void> init() async {
     if (_initialized) return;
     _prefs = await SharedPreferences.getInstance();
     _initialized = true;
 
-    // Pastikan Stage 1 selalu terbuka (default)
+    // Stage 1 selalu terbuka
     if (!(_prefs!.containsKey('stage_unlocked_1'))) {
       await _prefs!.setBool('stage_unlocked_1', true);
     }
   }
 
   SharedPreferences get _p {
-    assert(
-      _initialized,
-      'DataService belum diinisialisasi! Panggil await DataService.instance.init() dulu.',
-    );
+    assert(_initialized, 'DataService belum diinisialisasi!');
     return _prefs!;
   }
 
   // ============================================================
-  // DATA SISWA (Hardcoded — nanti bisa dari database server)
+  // DATA SISWA
   // ============================================================
   static const List<Map<String, String>> daftarSiswa = [
     {'nama': 'Asep Mahmudin', 'kelas': 'TK A'},
@@ -65,45 +47,49 @@ class DataService extends ChangeNotifier {
   ];
 
   // ============================================================
-  // KREDENSIAL GURU (Hardcoded)
+  // KREDENSIAL GURU
   // ============================================================
-  static const String _guruEmail = 'guru@ejayuk.com';
+  static const String _guruEmail = 'guru@bambim.com';
   static const String _guruPassword = 'guru123';
 
   // ============================================================
   // VALIDASI LOGIN
   // ============================================================
-
-  /// Validasi nama siswa → true jika ada di daftarSiswa
   bool validateStudent(String nama) {
     final trimmed = nama.trim();
-    return daftarSiswa.any(
-      (s) => s['nama']!.toLowerCase() == trimmed.toLowerCase(),
-    );
+    return daftarSiswa
+        .any((s) => s['nama']!.toLowerCase() == trimmed.toLowerCase());
   }
 
-  /// Ambil data siswa berdasarkan nama
   Map<String, String>? getStudentData(String nama) {
     try {
       return daftarSiswa.firstWhere(
-        (s) => s['nama']!.toLowerCase() == nama.trim().toLowerCase(),
-      );
+          (s) => s['nama']!.toLowerCase() == nama.trim().toLowerCase());
     } catch (_) {
       return null;
     }
   }
 
-  /// Validasi login guru
   bool validateTeacher(String email, String password) {
     return email.trim() == _guruEmail && password == _guruPassword;
   }
 
   // ============================================================
   // SESI LOGIN
+  // ✅ UPDATE: isLoggedIn terpisah dari isGuru
   // ============================================================
   String get currentStudent => _p.getString('current_student') ?? '';
   String get currentRole => _p.getString('current_role') ?? '';
-  bool get isLoggedIn => currentStudent.isNotEmpty || currentRole == 'guru';
+
+  /// Apakah sudah login sebagai siswa
+  bool get isLoggedInSiswa =>
+      currentRole == 'siswa' && currentStudent.isNotEmpty;
+
+  /// Apakah sudah login sebagai guru
+  bool get isLoggedInGuru => currentRole == 'guru';
+
+  /// Apakah sudah login (siswa atau guru)
+  bool get isLoggedIn => isLoggedInSiswa || isLoggedInGuru;
 
   Future<void> loginSiswa(String nama) async {
     await _p.setString('current_student', nama.trim());
@@ -127,24 +113,19 @@ class DataService extends ChangeNotifier {
   // ============================================================
   static const int totalStage = 5;
 
-  /// Apakah stage X sudah terbuka?
   bool isStageUnlocked(int stage) {
-    if (stage == 1) return true; // Stage 1 selalu terbuka
+    if (stage == 1) return true;
     return _p.getBool('stage_unlocked_$stage') ?? false;
   }
 
-  /// Apakah stage X sudah diselesaikan siswa ini?
   bool isStageCompleted(int stage) {
-    final key = 'completed_${currentStudent}_$stage';
-    return _p.getBool(key) ?? false;
+    if (!isLoggedInSiswa) return false;
+    return _p.getBool('completed_${currentStudent}_$stage') ?? false;
   }
 
-  /// Guru membuka stage baru
   Future<void> guruUnlockStage(int stage) async {
     final sudahTerbuka = isStageUnlocked(stage);
     await _p.setBool('stage_unlocked_$stage', true);
-
-    // Hanya buat notifikasi jika belum pernah dibuka sebelumnya
     if (!sudahTerbuka) {
       await _tambahNotifikasi(
         judul: '🔓 Stage Baru Terbuka!',
@@ -155,9 +136,8 @@ class DataService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Guru menutup stage kembali (toggle)
   Future<void> guruLockStage(int stage) async {
-    if (stage == 1) return; // Stage 1 tidak bisa dikunci
+    if (stage == 1) return;
     await _p.setBool('stage_unlocked_$stage', false);
     notifyListeners();
   }
@@ -165,14 +145,11 @@ class DataService extends ChangeNotifier {
   // ============================================================
   // SKOR SISWA
   // ============================================================
-
-  /// Ambil skor stage X untuk siswa yang sedang login
   int getStageScore(int stage) {
-    final key = 'score_${currentStudent}_$stage';
-    return _p.getInt(key) ?? 0;
+    if (!isLoggedInSiswa) return 0;
+    return _p.getInt('score_${currentStudent}_$stage') ?? 0;
   }
 
-  /// Jumlah bintang stage X (0–3)
   int getStageBintang(int stage) {
     if (!isStageCompleted(stage)) return 0;
     final skor = getStageScore(stage);
@@ -181,32 +158,26 @@ class DataService extends ChangeNotifier {
     return 1;
   }
 
-  /// Simpan skor setelah menyelesaikan stage
   Future<void> simpanSkorStage(int stage, int skor) async {
+    if (!isLoggedInSiswa) return;
     final keyScore = 'score_${currentStudent}_$stage';
     final keyDone = 'completed_${currentStudent}_$stage';
-
-    // Simpan skor tertinggi saja (tidak overwrite jika skor lebih rendah)
     final skorLama = getStageScore(stage);
-    if (skor > skorLama) {
-      await _p.setInt(keyScore, skor);
-    }
+    if (skor > skorLama) await _p.setInt(keyScore, skor);
     await _p.setBool(keyDone, true);
     notifyListeners();
   }
 
-  /// Rata-rata skor semua stage yang selesai
   double get rataSkorSiswa {
-    final stageSelesai = List.generate(
-      totalStage,
-      (i) => i + 1,
-    ).where((s) => isStageCompleted(s)).toList();
-    if (stageSelesai.isEmpty) return 0;
-    final total = stageSelesai.fold<int>(0, (sum, s) => sum + getStageScore(s));
-    return total / stageSelesai.length;
+    if (!isLoggedInSiswa) return 0;
+    final selesai = List.generate(totalStage, (i) => i + 1)
+        .where((s) => isStageCompleted(s))
+        .toList();
+    if (selesai.isEmpty) return 0;
+    final total = selesai.fold<int>(0, (sum, s) => sum + getStageScore(s));
+    return total / selesai.length;
   }
 
-  /// Stage terakhir yang bisa dimainkan (sudah selesai stage sebelumnya)
   int get stageAktifSiswa {
     for (int s = totalStage; s >= 1; s--) {
       if (isStageUnlocked(s)) return s;
@@ -217,19 +188,14 @@ class DataService extends ChangeNotifier {
   // ============================================================
   // DATA SEMUA SISWA (untuk dashboard guru)
   // ============================================================
-
-  /// Ambil skor stage X untuk siswa tertentu
   int getSkorSiswaStage(String namaSiswa, int stage) {
-    final key = 'score_${namaSiswa}_$stage';
-    return _p.getInt(key) ?? 0;
+    return _p.getInt('score_${namaSiswa}_$stage') ?? 0;
   }
 
   bool isSiswaSelesaiStage(String namaSiswa, int stage) {
-    final key = 'completed_${namaSiswa}_$stage';
-    return _p.getBool(key) ?? false;
+    return _p.getBool('completed_${namaSiswa}_$stage') ?? false;
   }
 
-  /// Persentase penyelesaian gabungan untuk seorang siswa (0.0–1.0)
   double persentaseSiswa(String namaSiswa) {
     int totalSkor = 0;
     int jumlahSelesai = 0;
@@ -240,20 +206,14 @@ class DataService extends ChangeNotifier {
       }
     }
     if (jumlahSelesai == 0) return 0;
-    // Rata-rata skor / 100 sebagai persentase
     return (totalSkor / jumlahSelesai) / 100;
   }
 
   // ============================================================
   // NOTIFIKASI
   // ============================================================
+  bool get adaNotifikasiBaru => _p.getBool('notif_unread') ?? false;
 
-  /// Apakah ada notifikasi belum dibaca?
-  bool get adaNotifikasiBaru {
-    return _p.getBool('notif_unread') ?? false;
-  }
-
-  /// Ambil semua notifikasi (list JSON)
   List<Map<String, dynamic>> getNotifikasi() {
     final raw = _p.getStringList('notifications') ?? [];
     return raw
@@ -282,7 +242,6 @@ class DataService extends ChangeNotifier {
     };
     final list = _p.getStringList('notifications') ?? [];
     list.insert(0, json.encode(notif));
-    // Simpan maksimal 20 notifikasi
     await _p.setStringList('notifications', list.take(20).toList());
     await _p.setBool('notif_unread', true);
     notifyListeners();
@@ -290,7 +249,6 @@ class DataService extends ChangeNotifier {
 
   Future<void> tandaiNotifikasiDibaca() async {
     await _p.setBool('notif_unread', false);
-    // Tandai semua notifikasi sebagai dibaca
     final list = getNotifikasi();
     final updated = list.map((n) {
       n['dibaca'] = true;
@@ -301,7 +259,7 @@ class DataService extends ChangeNotifier {
   }
 
   // ============================================================
-  // RESET / CLEAR DATA (untuk testing)
+  // RESET DATA
   // ============================================================
   Future<void> resetAllData() async {
     await _p.clear();
@@ -310,6 +268,7 @@ class DataService extends ChangeNotifier {
   }
 
   Future<void> resetSkorSiswa() async {
+    if (!isLoggedInSiswa) return;
     for (int s = 1; s <= totalStage; s++) {
       await _p.remove('score_${currentStudent}_$s');
       await _p.remove('completed_${currentStudent}_$s');
